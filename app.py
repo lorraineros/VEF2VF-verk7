@@ -1,186 +1,80 @@
-<<<<<<< HEAD
-import os
-from flask import Flask, flash, redirect, render_template, request, url_for, make_response, escape, session, abort
-from pymysql import *
-
+from flask import Flask, render_template, session, request, redirect, url_for
+import pymysql
+import re
 app = Flask(__name__)
+app.config['SECRET_KEY'] = "hcy148"
+SESSION_TYPE = 'redis'
+app.config.from_object(__name__)
 
-app.secret_key = os.urandom(16)   
-print(os.urandom(16))
+conn = pymysql.connect(host='tsuts.tskoli.is', port=3306, user='2509022390', password='mypassword', database='2509022390_vef2_v7')
+# conn = pymysql.connect(host='localhost', port=3306, user='root', password='', database='ok')
+# https://pythonspot.com/login-authentication-with-flask/
 
-connection = connect(host='tsuts.tskoli.is', port=3306, user='2509022390', password='mypassword', database='2509022390_vef2_v7', autocommit=True)
-
-@app.route("/")
-def index():
-    with connection.cursor() as cursor:
-        cursor.execute("select * from 2509022390_vef2_v7.users")
-        users = cursor.fetchall()
-
-    if 'user' in session:
-        user = session['user']
-    else: 
-        user = {"name":"none", "password":"none", "email":"none"}
-
-    return render_template('main.tpl', user=user)
-
-
-@app.route("/innskraning", methods=['GET', 'POST'])
-def innskraning():
-    error = False
-    if 'user' in session:
-        return redirect(url_for('index'))
-
-    with connection.cursor() as cursor:
-        cursor.execute("select * from 2509022390_vef2_v7.users")
-        users = cursor.fetchall()
-
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    msg = ''
     if request.method == 'POST':
-        error = True
-        for u in users:
-            if request.form['name'] == u[0]:
-                if request.form['password'] == u[1]:
-                    session['user'] = {"name":u[0], "password":u[1], "email":u[2]}
-                    return redirect(url_for('index'))
-    return render_template('login.tpl', error=error)
+        user = request.form.get('user')
+        passw = request.form.get('passw')
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users where user = %s and passw = %s", (user, passw))    
+        users = cur.fetchone()
+        if users:
+            session['loggedin'] = True
+            session['nafn'] = users[2]
+            return redirect(url_for('home'))
+        else:
+            msg = 'Incorrect User/Pass!'
 
-@app.route('/sida')
-def sida():
-    if 'user' in session:
-        user = session['user']
-    else:
-        return redirect(url_for('innskraning'))
+    return render_template('index.tpl', msg=msg)
 
-    return render_template('sida.tpl', user=user)
+@app.route('/logout')
+def logout():
+    session.pop('loggedin', None)
+    session.pop('user', None)
+    return redirect(url_for('login'))
 
-@app.route('/utskraning')
-def utskraning():
-    if 'user' in session:
-        session.pop('user')
-    return redirect(url_for('index'))
+@app.route('/register', methods=['GET','POST'])
+def register():
+    msg = ''
+    if request.method == 'POST' and 'user' in request.form and 'passw' in request.form:
+        user = request.form.get('user')
+        passw = request.form.get('passw')
+        nafn = request.form.get('nafn')
+        print(user)
+        print(passw)
+        print(nafn)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users where user = %s", (user))
+        users = cur.fetchone()
+        if users:
+            msg = 'Account already exist!'
+            print('abc')
+        else:
+            cur.execute("INSERT INTO users VALUES(%s,%s,%s)",(user, passw, nafn))
+            conn.commit()
+            print('def')
+            msg = 'You have sucessfully registeres!'
+    elif request.method == 'POST':
+        msg = 'PLease fill out the form!'
+    return render_template('register.tpl', msg=msg)
 
-@app.route('/nyrnotandi', methods=['GET', 'POST'])
-def nyrnotandi():
-    error = False
-    if 'user' in session:
-        return redirect(url_for('index'))
-
-    with connection.cursor() as cursor:
-        cursor.execute("select * from 2509022390_vef2_v7.users")
-        users = cursor.fetchall()
-
-    if request.method == 'POST':
-        for u in users:
-            if u[0] == request.form['name']:
-                return render_template('nyrnotandi.tpl', error=True)
-
-        with connection.cursor() as cursor:
-            cursor.execute("INSERT INTO 2509022390_vef2_v7.users(name, email, password) VALUES(%s, %s, %s)",(name, email, password))
-        return redirect(url_for('innskraning'))
-
-    return render_template('nyrnotandi.tpl', error=error)
-
-
+@app.route('/home')
+def home():
+    if 'loggedin' in session:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users")
+        users = cur.fetchall()
+        return render_template('home.tpl', nafn=session['nafn'], users = users)
+    return redirect(url_for('login'))
 
 @app.errorhandler(404)
-def not_found(error):
-    return render_template("not_found.tpl"),404
+def error404(error):
+    return render_template('error404.tpl'), 404
 
 @app.errorhandler(405)
-def not_allowed(error):
-    return render_template("not_allowed.tpl"),405
+def error404(error):
+    return render_template('error405.tpl'), 405
 
 if __name__ == '__main__':
-=======
-import os
-from flask import Flask, flash, redirect, render_template, request, url_for, make_response, escape, session, abort
-from pymysql import *
-
-app = Flask(__name__)
-
-app.secret_key = os.urandom(16)   
-print(os.urandom(16))
-
-connection = connect(host='tsuts.tskoli.is', port=3306, user='2509022390', password='mypassword', database='2509022390_vef2_v7', autocommit=True)
-
-@app.route("/")
-def index():
-    with connection.cursor() as cursor:
-        cursor.execute("select * from 2509022390_vef2_v7.users")
-        users = cursor.fetchall()
-
-    if 'user' in session:
-        user = session['user']
-    else: 
-        user = {"name":"none", "password":"none", "email":"none"}
-
-    return render_template('main.tpl', user=user)
-
-
-@app.route("/innskraning", methods=['GET', 'POST'])
-def innskraning():
-    error = False
-    if 'user' in session:
-        return redirect(url_for('index'))
-
-    with connection.cursor() as cursor:
-        cursor.execute("select * from 2509022390_vef2_v7.users")
-        users = cursor.fetchall()
-
-    if request.method == 'POST':
-        error = True
-        for u in users:
-            if request.form['name'] == u[0]:
-                if request.form['password'] == u[1]:
-                    session['user'] = {"name":u[0], "password":u[1], "email":u[2]}
-                    return redirect(url_for('index'))
-    return render_template('login.tpl', error=error)
-
-@app.route('/sida')
-def sida():
-    if 'user' in session:
-        user = session['user']
-    else:
-        return redirect(url_for('innskraning'))
-
-    return render_template('sida.tpl', user=user)
-
-@app.route('/utskraning')
-def utskraning():
-    if 'user' in session:
-        session.pop('user')
-    return redirect(url_for('index'))
-
-@app.route('/nyrnotandi', methods=['GET', 'POST'])
-def nyrnotandi():
-    error = False
-    if 'user' in session:
-        return redirect(url_for('index'))
-
-    with connection.cursor() as cursor:
-        cursor.execute("select * from 2509022390_vef2_v7.users")
-        users = cursor.fetchall()
-
-    if request.method == 'POST':
-        for u in users:
-            if u[0] == request.form['name']:
-                return render_template('nyrnotandi.tpl', error=True)
-
-        with connection.cursor() as cursor:
-            cursor.execute("INSERT INTO 2509022390_vef2_v7.users(name, email, password) VALUES(%s, %s, %s)",(name, email, password))
-        return redirect(url_for('innskraning'))
-
-    return render_template('nyrnotandi.tpl', error=error)
-
-
-
-@app.errorhandler(404)
-def not_found(error):
-    return render_template("not_found.tpl"),404
-
-@app.errorhandler(405)
-def not_allowed(error):
-    return render_template("not_allowed.tpl"),405
-
-if __name__ == '__main__':
->>>>>>> ok
     app.run(debug=True)
